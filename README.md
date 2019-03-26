@@ -1,4 +1,8 @@
-﻿# Use the maskrcnn for the humanpose keypoints detection
+# Car keypoint detection
+Work in progress, modifying code to allow keypoint detection of cars.
+
+Old README:
+# Use the maskrcnn for the humanpose keypoints detection
 mask rcnn can be used to the human keypoints detection
 
 
