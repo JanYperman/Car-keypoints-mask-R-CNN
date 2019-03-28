@@ -30,6 +30,7 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
 import os
 import time
 import numpy as np
+import pdb
 
 # Download and install the Python COCO tools from https://github.com/waleedka/coco
 # That's a fork from the original https://github.com/pdollar/coco with a bug
@@ -347,7 +348,8 @@ class CocoDataset(utils.Dataset):
         for annotation in annotations:
             class_id = self.map_source_class_id(
                 "coco.{}".format(annotation['category_id']))
-            assert class_id == 1
+            # pdb.set_trace()
+            # assert class_id == 1
             if class_id:
 
                 #load masks
@@ -372,7 +374,9 @@ class CocoDataset(utils.Dataset):
 
                 keypoints.append(keypoint)
                 class_ids.append(class_id)
+                pdb.set_trace()
 
+        pdb.set_trace()
         # Pack instance masks into an array
         if class_ids:
             keypoints = np.array(keypoints,dtype=np.int32)
@@ -583,7 +587,8 @@ if __name__ == '__main__':
 
     # Load weights
     print("Loading weights ", model_path)
-    model.load_weights(model_path, by_name=True)
+    # model.load_weights(model_path, by_name=True)
+    model.load_weights(model_path, by_name=True, exclude=['mrcnn_bbox_fc', 'mrcnn_class_logits', 'mrcnn_mask'])
 
     # Train or evaluate
     if args.command == "train":
@@ -591,12 +596,12 @@ if __name__ == '__main__':
         # validation set, as as in the Mask RCNN paper.
         dataset_train = CocoDataset()
         dataset_train.load_coco(args.dataset, "train", year=args.year, auto_download=args.download)
-        dataset_train.load_coco(args.dataset, "valminusminival", year=args.year, auto_download=args.download)
+        dataset_train.load_coco(args.dataset, "valminusminival", year=2014, auto_download=args.download)
         dataset_train.prepare()
 
         # Validation dataset
         dataset_val = CocoDataset()
-        dataset_val.load_coco(args.dataset, "minival", year=args.year, auto_download=args.download)
+        dataset_val.load_coco(args.dataset, "minival", year=2014, auto_download=args.download)
         dataset_val.prepare()
 
         # *** This training schedule is an example. Update to your needs ***

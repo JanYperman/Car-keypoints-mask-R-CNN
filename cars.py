@@ -159,7 +159,7 @@ class CarsDataset(utils.Dataset):
                         pos = np.hstack([traj.manual_annotations[i, :].reshape((-1, 2)), np.zeros((1, 1))])
                         points_2d = np.dot(traj.projection_matrix, np.vstack([pos.T, np.ones((1, 1))])).T
                         points_2d[:, :2] = points_2d[:, :2] / points_2d[:, 2].reshape((-1, 1))
-                        keypoint = points_2d.astype('uint16')
+                        keypoint = points_2d.astype('uint16').ravel()[:2]
                         contours = traj.contours[traj.local_frame(i + traj.manual_annotations_start)]
 
                         self.add_image(
@@ -169,6 +169,7 @@ class CarsDataset(utils.Dataset):
                                 side = traj.side,
                                 width = shape[0],
                                 height = shape[1],
+                                frame = i,
                                 annotations = [{'keypoints': keypoint, 'contours': contours}]
                                 )
 
@@ -283,12 +284,16 @@ class CarsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
 
-        mask = np.zeros([info['height'], info['width'], len(info['annotations'])], dtype=np.uint8)
+        mask = np.zeros((info['height'], info['width'], len(info['annotations'])), dtype=np.uint8)
         for i, annot in enumerate(info['annotations']):
-            center = annot['keypoints']
-            mask[center[0], center[1]] = 1
+            center = annot['keypoints'].ravel()
+            mask[center[0], center[1], :] = 1
 
-        return mask.astype(np.bool), np.ones([mask.shape[-1]], dtype=np.int32)
+        keypoints = np.zeros((len(info['annotations']), 1, 3))
+        for i, annot in enumerate(info['annotations']):
+            keypoints[i, 0, :] = np.hstack([annot['keypoints'].reshape((1, 2)), np.ones((1, 1))])
+
+        return keypoints, mask.astype(np.bool), np.ones([mask.shape[-1]], dtype=np.int32)
 
 
 
@@ -479,10 +484,6 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', required=True,
                         metavar="/path/to/coco/",
                         help='Directory of the MS-COCO dataset')
-    parser.add_argument('--year', required=False,
-                        default=DEFAULT_DATASET_YEAR,
-                        metavar="<year>",
-                        help='Year of the MS-COCO dataset (2014 or 2017) (default=2014)')
     parser.add_argument('--model', required=True,
                         metavar="/path/to/weights.h5",
                         help="Path to weights .h5 file or 'coco'")
@@ -494,18 +495,11 @@ if __name__ == '__main__':
                         default=500,
                         metavar="<image count>",
                         help='Images to use for evaluation (default=500)')
-    parser.add_argument('--download', required=False,
-                        default=False,
-                        metavar="<True|False>",
-                        help='Automatically download and unzip MS-COCO files (default=False)',
-                        type=bool)
     args = parser.parse_args()
     print("Command: ", args.command)
     print("Model: ", args.model)
     print("Dataset: ", args.dataset)
-    print("Year: ", args.year)
     print("Logs: ", args.logs)
-    print("Auto Download: ", args.download)
 
     # Configurations
     if args.command == "train":
@@ -542,20 +536,21 @@ if __name__ == '__main__':
 
     # Load weights
     print("Loading weights ", model_path)
-    model.load_weights(model_path, by_name=True)
+    model.load_weights(model_path, by_name=True, exclude=['mrcnn_bbox_fc', 'mrcnn_class_logits', 'mrcnn_mask'])
 
     # Train or evaluate
     if args.command == "train":
         # Training dataset. Use the training set and 35K from the
         # validation set, as as in the Mask RCNN paper.
-        dataset_train = CocoDataset()
-        dataset_train.load_cars(args.dataset, "train", year=args.year, auto_download=args.download)
+        dataset_train = CarsDataset()
+        dataset_train.load_cars(args.dataset, "train")
         # dataset_train.load_cars(args.dataset, "valminusminival", year=args.year, auto_download=args.download)
         dataset_train.prepare()
+        pdb.set_trace()
 
         # Validation dataset
-        dataset_val = CocoDataset()
-        dataset_val.load_cars(args.dataset, "minival", year=args.year, auto_download=args.download)
+        dataset_val = CarsDataset()
+        dataset_val.load_cars(args.dataset, "minival")
         dataset_val.prepare()
 
         # *** This training schedule is an example. Update to your needs ***
@@ -585,7 +580,7 @@ if __name__ == '__main__':
 
     elif args.command == "evaluate":
         # Validation dataset
-        dataset_val = CocoDataset()
+        dataset_val = CarsDataset()
         coco = dataset_val.load_coco(args.dataset, "minival", year=args.year, return_coco=True, auto_download=args.download)
         dataset_val.prepare()
         print("Running COCO evaluation on {} images.".format(args.limit))

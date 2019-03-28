@@ -1515,7 +1515,7 @@ def keypoint_weight_loss_graph(target_keypoint_weight, pred_class, target_class_
     loss = tf.reduce_mean(loss)
     return loss
 
-def test_keypoint_mrcnn_mask_loss_graph(target_keypoints, target_keypoint_weights, target_class_ids, pred_keypoint_logits,mask_shape=[56,56],number_point=17):
+def test_keypoint_mrcnn_mask_loss_graph(target_keypoints, target_keypoint_weights, target_class_ids, pred_keypoint_logits,mask_shape=[56,56],number_point=1):
     """
     This function is just use for inspecting the keypoint_mrcnn_mask_loss_graph
     target_keypoints: [batch, num_rois, num_keypoints].
@@ -1577,7 +1577,7 @@ def test_keypoint_mrcnn_mask_loss_graph(target_keypoints, target_keypoint_weight
 
 
 
-def keypoint_mrcnn_mask_loss_graph(target_keypoints, target_keypoint_weights, target_class_ids, pred_keypoints_logit, weight_loss = True, mask_shape=[56,56],number_point=17):
+def keypoint_mrcnn_mask_loss_graph(target_keypoints, target_keypoint_weights, target_class_ids, pred_keypoints_logit, weight_loss = True, mask_shape=[56,56],number_point=1):
     """Mask softmax cross-entropy loss for the keypoint head.
 
     target_keypoints: [batch, num_rois, num_keypoints].
@@ -2817,7 +2817,7 @@ class MaskRCNN():
         exlude: list of layer names to excluce
         """
         import h5py
-        from keras.engine import topology
+        from keras.engine import saving
 
         if exclude:
             by_name = True
@@ -2839,9 +2839,9 @@ class MaskRCNN():
             layers = filter(lambda l: l.name not in exclude, layers)
 
         if by_name:
-            topology.load_weights_from_hdf5_group_by_name(f, layers)
+            saving.load_weights_from_hdf5_group_by_name(f, layers)
         else:
-            topology.load_weights_from_hdf5_group(f, layers)
+            saving.load_weights_from_hdf5_group(f, layers)
         if hasattr(f, 'close'):
             f.close()
 
@@ -3009,7 +3009,7 @@ class MaskRCNN():
         # Data keypoint generators
 
         train_generator = data_generator_keypoint(train_dataset, self.config, shuffle=True,
-                                        batch_size=self.config.BATCH_SIZE,augment =True)
+                                        batch_size=self.config.BATCH_SIZE,augment =False)
         val_generator = data_generator_keypoint(val_dataset, self.config, shuffle=True,
                                        batch_size=self.config.BATCH_SIZE,
                                        augment=False)
@@ -3244,6 +3244,7 @@ class MaskRCNN():
                 log("image", image)
         # Mold inputs to format expected by the neural network
         molded_images, image_metas, windows = self.mold_inputs(images)
+        pdb.set_trace()
         if verbose:
             log("molded_images", molded_images)
             log("image_metas", image_metas)
